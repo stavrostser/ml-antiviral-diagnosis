@@ -1,0 +1,36 @@
+[project]
+name = "ml-antiviral-diagnosis"
+version = "0.1.0"
+description = "A case study for an alert system for antiviral treatment"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "pandas",
+  "numpy",
+  "torch",
+  "fastapi",
+  "uvicorn[standard]",
+  "pydantic",
+  "matplotlib",
+  "scikit-learn",
+]
+
+[project.optional-dependencies]
+dev = [
+  "jupyter",
+  "ipykernel",
+  "ruff",
+  "black",
+  "nbqa",
+  "openpyxl",
+  "pytest",
+]
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
