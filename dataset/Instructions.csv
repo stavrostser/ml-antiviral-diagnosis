@@ -1,0 +1,59 @@
+Unnamed: 0,Unnamed: 1
+,Exercise Instructions
+,"- You have 10 days to complete as much as you can of this exercise.  Please e-mail all code, diagrams, visualizations, and slides within 10 days of receiving this document and at least 1 day in advance of your interview."
+,"- We understand that this is complex and time-intensive exercise and will be challenging to complete.  If you are unable to complete all steps within given time, please prioritize the steps that you think are most relevant for the position and clearly lay out what steps you would take if given additional time."
+,"- The goal of this exercise is to evaluate your proficiency in data science/ML, data engineering, solution design and engineering, API development, and technical communication"
+,"- You will design, implement, and deploy a machine learning model"
+,- You will be given 20 minutes to present your work in front of a panel of interviewers.
+,- You are allowed to use AI Code Assistant of your choice but please clarify the usage before the interview start.
+,
+,Background
+,- Drug A is an oral antiviral that can be used to treat mild to moderate infections of Disease X in patients over the age of 12 who are at high risk of progressing to severe Disease X.  Drug A must be taken within 5 days after patients start showing symptoms caused by a Disease X infection.
+,"-A patient is considered as high risk if their age is 65 or older or if they have underlying medical conditions, such as: chronic lung disease (COPD and asthma), cardiovascular disease (heart failure, coronary artery disease or stroke), cancer, weakened inmune system (organ transplant, cancer treatment, HIV/AIDS), obesity (BMI of 30 or higher), diabetes, smoking"
+,"- The Drug A team wants to develop an EMR alert that notifies doctors when they diagnose patients with Disease X who are eligible for treatment, but are unlikely to be treated."
+,"- You have been provided data on a sample of patients who have been diagnosed with Disease X.  This data includes the following information:
+       -Conditions that may make patients at higher risk of progressing to severe Disease X
+       -Symptoms of Disease X the patient exhibits
+       -Other medications a patient is taking which may make a patient less likely to receive Drug A (contraindications)
+       -Demographic patient information
+       -Information on the physicians who are treating the patients"
+,"- There are 3 tables in this dataset, the data dictionary is on the Data Dictionary sheet."
+,
+,Data Tables
+,model_table - layout for table to be created as part of the Exercise Steps
+,"Data Dictionary - description of columns within fact_txn, dim_patient, and dim_physician"
+,fact_txn - table that captures information about patient transactions
+,dim_patient - lookup table that captures demographic patient information
+,dim_physician - lookup table that captures physician information
+,
+,Exercise Steps
+,Step 1. Review the data dictionary and data tables.  Perform data cleaning as needed.
+,
+,"Step 2. Create a dataset that will be used for machine learning based on the column descriptions in the model_table sheet.  Each row should contain a unique patient_id, and each patient_id should only appear once in the table."
+,"If you have questions on or are uncertain about how to implement specific items, please clearly state your assumptions and rationale."
+,Create at least 2 additional features that may be relevant to predicting whether a patient will be treated for Disease X.
+,
+,Step 3a. Build a classification model based on the dataset created in Step 2 to determine which patients are less likely to be treated for Disease X.
+,Step 3b. Explain your reasoning for choosing this type of model.
+,Step 3c. Display and analyze the performance of your model.
+,
+,"Step 4a. Design a modular and scalable software architecture for your solution.  Consider aspects like data processing, model inference, and error handling."
+,"Step 4b. Implement your design in Python, ensure your code is clean, well-documented, and follows best practices."
+,Step 4c. Implement a simple REST API in your application to serve predictions.  The API should accept input features in JSON format and return the likelihood of being treated for Disease X.  Consider using FastAPI.
+,
+,Step 5. Containerize your application using Docker and test the REST API locally using a docker container.
+,
+,"Step 6. Explain how you would effectively manage the different versions of the code, data, and models for the project. Discuss the specific steps involved in version control practices, including branching, merging and conflict resolution."
+,
+,
+,Submission Guidelines and Evaluation Criteria
+,Commit the source codes and a README.md file to a code repository (like Github)
+,The README.md should contain instructions on how to run your application locally and a brief explanation of your software architecture and design choices
+,"Please include model_table as a .txt, .csv, or .xlsx file when submitting your materials."
+,
+,Submission will be evaluated on:
+,"   1. Code quality (clean, well-organized, and documented code)"
+,   2. ML Model performance (performance of ML model and data science methodology)
+,   3. Software architecture (clarity and scalability of the software design)
+,   4. Documentation: Completeness and clarity of the README.md and other supporting documentation
+,   5. Clarity of presentation and thought process for design choices
