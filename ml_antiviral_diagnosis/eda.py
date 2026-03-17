@@ -86,9 +86,6 @@ def count_unique_values_only_in_first(
     }
 
     if print_summary:
-        print(
-            "Unique values only in first list: "
-            f"{result['count']} found -> {result['values']}"
-        )
+        print("Unique values only in first list: " f"{result['count']} found -> {result['values']}")
 
     return result
