@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from enum import StrEnum
-import re
 from typing import Any
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
-
 
 DISEASE_X_DESCRIPTION = "Disease X"
 DRUG_A_DESCRIPTION = "Drug A"
@@ -66,10 +65,7 @@ def _normalize_patient_transactions_columns(df: pd.DataFrame) -> None:
 
     if missing_columns:
         missing_text = ", ".join(sorted(missing_columns))
-        raise ValueError(
-            "patient transactions are missing required columns: "
-            f"{missing_text}"
-        )
+        raise ValueError("patient transactions are missing required columns: " f"{missing_text}")
 
 
 def _parse_transaction_date(value: Any) -> date:
@@ -117,8 +113,7 @@ def _find_first_transaction_date_by_description(
     matching_dates = [
         _parse_transaction_date(transaction["txn_dt"])
         for transaction in transactions
-        if _normalize_transaction_text(transaction.get("txn_desc", ""))
-        == normalized_description
+        if _normalize_transaction_text(transaction.get("txn_desc", "")) == normalized_description
     ]
 
     if not matching_dates:
@@ -151,9 +146,7 @@ def _filter_transactions_on_or_before_date(
     for transaction_type in TransactionType:
         filtered_transactions[transaction_type.value] = [
             transaction
-            for transaction in _get_transactions_for_type(
-                transactions_by_type, transaction_type
-            )
+            for transaction in _get_transactions_for_type(transactions_by_type, transaction_type)
             if _parse_transaction_date(transaction["txn_dt"]) <= cutoff_date
         ]
 
@@ -180,8 +173,7 @@ def _has_transaction_on_or_after_date_by_description(
 
     normalized_description = _normalize_transaction_text(description)
     return any(
-        _normalize_transaction_text(transaction.get("txn_desc", ""))
-        == normalized_description
+        _normalize_transaction_text(transaction.get("txn_desc", "")) == normalized_description
         and _parse_transaction_date(transaction["txn_dt"]) >= minimum_date
         for transaction in transactions
     )
