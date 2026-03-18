@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 import pandas as pd
 import pytest
 
-from ml_antiviral_diagnosis.de import transform_fact_txn_to_patient_transactions
+from ml_antiviral_diagnosis.de import (
+    build_patient_diagnosis_dataset,
+    transform_fact_txn_to_patient_transactions,
+)
 
 
 def test_transform_fact_txn_to_patient_transactions_builds_patient_rows() -> None:
@@ -79,3 +84,217 @@ def test_transform_fact_txn_to_patient_transactions_rejects_missing_columns() ->
 
     with pytest.raises(ValueError, match="missing required columns"):
         transform_fact_txn_to_patient_transactions(df)
+
+
+def test_build_patient_diagnosis_dataset_finds_first_diagnosis_and_target() -> None:
+    """It aligns transactions to diagnosis and flags Drug A after diagnosis."""
+    patient_transactions_df = pd.DataFrame(
+        {
+            "patient_id": [1],
+            "transactions_by_type": [
+                {
+                    "SYMPTOMS": [
+                        {
+                            "txn_dt": "2024-01-01",
+                            "physician_id": 1001,
+                            "txn_location_type": "OFFICE",
+                            "insurance_type": "COMMERCIAL",
+                            "txn_desc": "Fever",
+                        },
+                        {
+                            "txn_dt": "2024-01-04",
+                            "physician_id": 1001,
+                            "txn_location_type": "OFFICE",
+                            "insurance_type": "COMMERCIAL",
+                            "txn_desc": "Cough",
+                        },
+                    ],
+                    "CONDITIONS": [
+                        {
+                            "txn_dt": "2024-01-03",
+                            "physician_id": 1001,
+                            "txn_location_type": "OFFICE",
+                            "insurance_type": "COMMERCIAL",
+                            "txn_desc": "DISEASE_X",
+                        },
+                        {
+                            "txn_dt": "2024-01-06",
+                            "physician_id": 1002,
+                            "txn_location_type": "HOME",
+                            "insurance_type": "COMMERCIAL",
+                            "txn_desc": "Disease X",
+                        },
+                    ],
+                    "CONTRAINDICATIONS": [
+                        {
+                            "txn_dt": "2024-01-02",
+                            "physician_id": 1001,
+                            "txn_location_type": "OFFICE",
+                            "insurance_type": "COMMERCIAL",
+                            "txn_desc": "Warfarin",
+                        }
+                    ],
+                    "TREATMENTS": [
+                        {
+                            "txn_dt": "2024-01-03",
+                            "physician_id": 1001,
+                            "txn_location_type": "OFFICE",
+                            "insurance_type": "COMMERCIAL",
+                            "txn_desc": "drug a",
+                        },
+                        {
+                            "txn_dt": "2024-01-07",
+                            "physician_id": 1002,
+                            "txn_location_type": "HOME",
+                            "insurance_type": "COMMERCIAL",
+                            "txn_desc": "Other treatment",
+                        },
+                    ],
+                }
+            ],
+        }
+    )
+
+    result = build_patient_diagnosis_dataset(patient_transactions_df)
+
+    assert result.columns.tolist() == [
+        "patient_id",
+        "first_diagnosis_date",
+        "transactions_by_type",
+        "TARGET",
+    ]
+    assert result.iloc[0]["first_diagnosis_date"] == date(2024, 1, 3)
+    assert result.iloc[0]["TARGET"] == 1
+    assert result.iloc[0]["transactions_by_type"]["SYMPTOMS"] == [
+        {
+            "txn_dt": "2024-01-01",
+            "physician_id": 1001,
+            "txn_location_type": "OFFICE",
+            "insurance_type": "COMMERCIAL",
+            "txn_desc": "Fever",
+        }
+    ]
+    assert result.iloc[0]["transactions_by_type"]["CONDITIONS"] == [
+        {
+            "txn_dt": "2024-01-03",
+            "physician_id": 1001,
+            "txn_location_type": "OFFICE",
+            "insurance_type": "COMMERCIAL",
+            "txn_desc": "DISEASE_X",
+        }
+    ]
+    assert result.iloc[0]["transactions_by_type"]["TREATMENTS"] == [
+        {
+            "txn_dt": "2024-01-03",
+            "physician_id": 1001,
+            "txn_location_type": "OFFICE",
+            "insurance_type": "COMMERCIAL",
+            "txn_desc": "drug a",
+        }
+    ]
+
+
+def test_build_patient_diagnosis_dataset_excludes_treatment_before_diagnosis() -> None:
+    """It does not count Drug A when treatment only occurred before diagnosis."""
+    patient_transactions_df = pd.DataFrame(
+        {
+            "patient_id": [2],
+            "transactions_by_type": [
+                {
+                    "SYMPTOMS": [],
+                    "CONDITIONS": [
+                        {
+                            "txn_dt": "2024-02-10",
+                            "physician_id": 2001,
+                            "txn_location_type": "OFFICE",
+                            "insurance_type": "MEDICARE",
+                            "txn_desc": "disease x",
+                        }
+                    ],
+                    "CONTRAINDICATIONS": [],
+                    "TREATMENTS": [
+                        {
+                            "txn_dt": "2024-02-09",
+                            "physician_id": 2001,
+                            "txn_location_type": "OFFICE",
+                            "insurance_type": "MEDICARE",
+                            "txn_desc": "DRUG A",
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    result = build_patient_diagnosis_dataset(patient_transactions_df)
+
+    assert result.iloc[0]["first_diagnosis_date"] == date(2024, 2, 10)
+    assert result.iloc[0]["TARGET"] == 0
+    assert result.iloc[0]["transactions_by_type"]["TREATMENTS"] == [
+        {
+            "txn_dt": "2024-02-09",
+            "physician_id": 2001,
+            "txn_location_type": "OFFICE",
+            "insurance_type": "MEDICARE",
+            "txn_desc": "DRUG A",
+        }
+    ]
+
+
+def test_build_patient_diagnosis_dataset_rejects_missing_columns() -> None:
+    """It rejects malformed patient transaction frames."""
+    df = pd.DataFrame({"patient_id": [1]})
+
+    with pytest.raises(ValueError, match="missing required columns"):
+        build_patient_diagnosis_dataset(df)
+
+
+def test_build_patient_diagnosis_dataset_skips_patients_without_diagnosis() -> None:
+    """It excludes patients who never receive a Disease X diagnosis."""
+    patient_transactions_df = pd.DataFrame(
+        {
+            "patient_id": [1, 2],
+            "transactions_by_type": [
+                {
+                    "SYMPTOMS": [],
+                    "CONDITIONS": [
+                        {
+                            "txn_dt": "2024-02-10",
+                            "physician_id": 2001,
+                            "txn_location_type": "OFFICE",
+                            "insurance_type": "MEDICARE",
+                            "txn_desc": "disease x",
+                        }
+                    ],
+                    "CONTRAINDICATIONS": [],
+                    "TREATMENTS": [],
+                },
+                {
+                    "SYMPTOMS": [
+                        {
+                            "txn_dt": "2024-02-09",
+                            "physician_id": 2002,
+                            "txn_location_type": "OFFICE",
+                            "insurance_type": "COMMERCIAL",
+                            "txn_desc": "Cough",
+                        }
+                    ],
+                    "CONDITIONS": [
+                        {
+                            "txn_dt": "2024-02-10",
+                            "physician_id": 2002,
+                            "txn_location_type": "OFFICE",
+                            "insurance_type": "COMMERCIAL",
+                            "txn_desc": "Diabetes",
+                        }
+                    ],
+                    "CONTRAINDICATIONS": [],
+                    "TREATMENTS": [],
+                },
+            ],
+        }
+    )
+
+    result = build_patient_diagnosis_dataset(patient_transactions_df)
+
+    assert result["patient_id"].tolist() == [1]
