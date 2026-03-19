@@ -68,6 +68,57 @@ def _normalize_patient_transactions_columns(df: pd.DataFrame) -> None:
         raise ValueError("patient transactions are missing required columns: " f"{missing_text}")
 
 
+def _validate_diagnosis_dataset_columns(df: pd.DataFrame) -> None:
+    """Validate the diagnosis-aligned patient DataFrame schema.
+
+    Args:
+        df: Diagnosis-aligned patient DataFrame.
+
+    Raises:
+        ValueError: If required columns are missing.
+    """
+    required_columns = {"patient_id", "first_diagnosis_date", "transactions_by_type", "TARGET"}
+    missing_columns = required_columns - set(df.columns)
+
+    if missing_columns:
+        missing_text = ", ".join(sorted(missing_columns))
+        raise ValueError(f"diagnosis dataset is missing required columns: {missing_text}")
+
+
+def _validate_dim_patient_columns(df: pd.DataFrame) -> None:
+    """Validate the patient dimension schema.
+
+    Args:
+        df: Patient dimension DataFrame.
+
+    Raises:
+        ValueError: If required columns are missing.
+    """
+    required_columns = {"PATIENT_ID", "BIRTH_YEAR", "GENDER"}
+    missing_columns = required_columns - set(df.columns)
+
+    if missing_columns:
+        missing_text = ", ".join(sorted(missing_columns))
+        raise ValueError(f"dim_patient is missing required columns: {missing_text}")
+
+
+def _validate_dim_physician_columns(df: pd.DataFrame) -> None:
+    """Validate the physician dimension schema.
+
+    Args:
+        df: Physician dimension DataFrame.
+
+    Raises:
+        ValueError: If required columns are missing.
+    """
+    required_columns = {"PHYSICIAN_ID", "STATE", "PHYSICIAN_TYPE"}
+    missing_columns = required_columns - set(df.columns)
+
+    if missing_columns:
+        missing_text = ", ".join(sorted(missing_columns))
+        raise ValueError(f"dim_physician is missing required columns: {missing_text}")
+
+
 def _parse_transaction_date(value: Any) -> date:
     """Convert a transaction date value to a ``date`` instance.
 
@@ -120,6 +171,33 @@ def _find_first_transaction_date_by_description(
         return None
 
     return min(matching_dates)
+
+
+def _find_first_transaction_by_description_on_date(
+    transactions: list[dict[str, Any]],
+    description: str,
+    event_date: date,
+) -> dict[str, Any] | None:
+    """Find the first matching transaction on a specific date.
+
+    Args:
+        transactions: Transaction dictionaries from a single category.
+        description: Description to match after normalization.
+        event_date: Required transaction date.
+
+    Returns:
+        The first matching transaction dictionary, or ``None`` if not found.
+    """
+    normalized_description = _normalize_transaction_text(description)
+
+    for transaction in transactions:
+        if (
+            _normalize_transaction_text(transaction.get("txn_desc", "")) == normalized_description
+            and _parse_transaction_date(transaction["txn_dt"]) == event_date
+        ):
+            return transaction
+
+    return None
 
 
 def _filter_transactions_on_or_before_date(
@@ -192,6 +270,69 @@ def _normalize_physician_id(value: Any) -> int | None:
         return None
 
     return int(value)
+
+
+def _normalize_patient_gender(value: Any) -> str | None:
+    """Normalize patient gender values to the model-table categories.
+
+    Args:
+        value: Raw patient gender value.
+
+    Returns:
+        ``M`` or ``F`` when available, otherwise ``None``.
+    """
+    if pd.isna(value):
+        return None
+
+    normalized_value = str(value).strip().upper()
+    if normalized_value in {"M", "F"}:
+        return normalized_value
+
+    return None
+
+
+def _calculate_patient_age_at_diagnosis(
+    diagnosis_date: date,
+    birth_year: Any,
+) -> int | None:
+    """Estimate patient age at diagnosis from birth year.
+
+    Args:
+        diagnosis_date: Disease X diagnosis date.
+        birth_year: Patient birth year.
+
+    Returns:
+        Age in years, or ``None`` when birth year is missing.
+    """
+    if pd.isna(birth_year):
+        return None
+
+    return int(diagnosis_date.year - int(birth_year))
+
+
+def _count_high_risk_conditions(
+    condition_transactions: list[dict[str, Any]],
+    diagnosis_description: str,
+) -> int:
+    """Count distinct non-diagnosis conditions present by diagnosis date.
+
+    Args:
+        condition_transactions: Filtered ``CONDITIONS`` transactions.
+        diagnosis_description: Disease X diagnosis description.
+
+    Returns:
+        The number of distinct condition descriptions excluding Disease X.
+    """
+    normalized_diagnosis_description = _normalize_transaction_text(diagnosis_description)
+    # Set comprehension to find distinct normalized condition descriptions excluding the diagnosis description
+    distinct_conditions = {
+        _normalize_transaction_text(transaction.get("txn_desc", ""))
+        for transaction in condition_transactions
+        if _normalize_transaction_text(transaction.get("txn_desc", ""))
+        != normalized_diagnosis_description
+    }
+    distinct_conditions.discard("")
+    return len(distinct_conditions)
 
 
 def transform_fact_txn_to_patient_transactions(df: pd.DataFrame) -> pd.DataFrame:
@@ -329,3 +470,93 @@ def build_patient_diagnosis_dataset(
         )
 
     return pd.DataFrame(diagnosis_rows)
+
+
+def build_model_table(
+    diagnosis_dataset_df: pd.DataFrame,
+    dim_patient_df: pd.DataFrame,
+    dim_physician_df: pd.DataFrame,
+    diagnosis_description: str = DISEASE_X_DESCRIPTION,
+) -> pd.DataFrame:
+    """Build the core model table columns from diagnosis and dimension data.
+
+    Args:
+        diagnosis_dataset_df: Diagnosis-aligned patient dataset.
+        dim_patient_df: Patient dimension table.
+        dim_physician_df: Physician dimension table.
+        diagnosis_description: Description used to identify Disease X diagnosis.
+
+    Returns:
+        A DataFrame with the current model-table columns in the expected order.
+
+    Raises:
+        ValueError: If any input DataFrame is missing required columns.
+    """
+    _validate_diagnosis_dataset_columns(diagnosis_dataset_df)
+    _validate_dim_patient_columns(dim_patient_df)
+    _validate_dim_physician_columns(dim_physician_df)
+
+    patient_lookup = dim_patient_df.set_index("PATIENT_ID")[["BIRTH_YEAR", "GENDER"]]
+    physician_lookup = dim_physician_df.set_index("PHYSICIAN_ID")[["STATE", "PHYSICIAN_TYPE"]]
+
+    model_rows: list[dict[str, Any]] = []
+
+    for row in diagnosis_dataset_df.itertuples(index=False):
+        patient_id = int(row.patient_id)
+        diagnosis_date = row.first_diagnosis_date
+        transactions_by_type = dict(row.transactions_by_type)
+        diagnosis_event = _find_first_transaction_by_description_on_date(
+            transactions=_get_transactions_for_type(transactions_by_type, TransactionType.CONDITIONS),
+            description=diagnosis_description,
+            event_date=diagnosis_date,
+        )
+
+        patient_birth_year = None
+        patient_gender = None
+        if patient_id in patient_lookup.index:
+            patient_birth_year = patient_lookup.at[patient_id, "BIRTH_YEAR"]
+            patient_gender = _normalize_patient_gender(patient_lookup.at[patient_id, "GENDER"])
+
+        physician_state = None
+        physician_type = None
+        diagnosis_physician_id = None if diagnosis_event is None else diagnosis_event.get("physician_id")
+        if diagnosis_physician_id is not None and diagnosis_physician_id in physician_lookup.index:
+            physician_state = physician_lookup.at[diagnosis_physician_id, "STATE"]
+            physician_type = physician_lookup.at[diagnosis_physician_id, "PHYSICIAN_TYPE"]
+
+        location_type = None if diagnosis_event is None else diagnosis_event.get("txn_location_type")
+        num_conditions = _count_high_risk_conditions(
+            condition_transactions=_get_transactions_for_type(
+                transactions_by_type, TransactionType.CONDITIONS
+            ),
+            diagnosis_description=diagnosis_description,
+        )
+
+        model_rows.append(
+            {
+                "PATIENT_ID": patient_id,
+                "TARGET": int(row.TARGET),
+                "DISEASEX_DT": diagnosis_date,
+                "PATIENT_AGE": _calculate_patient_age_at_diagnosis(diagnosis_date, patient_birth_year),
+                "PATIENT_GENDER": patient_gender,
+                "NUM_CONDITIONS": num_conditions,
+                "PHYSICIAN_TYPE": physician_type,
+                "PHYSICIAN_STATE": physician_state,
+                "LOCATION_TYPE": location_type,
+            }
+        )
+
+    return pd.DataFrame(
+        model_rows,
+        columns=[
+            "PATIENT_ID",
+            "TARGET",
+            "DISEASEX_DT",
+            "PATIENT_AGE",
+            "PATIENT_GENDER",
+            "NUM_CONDITIONS",
+            "PHYSICIAN_TYPE",
+            "PHYSICIAN_STATE",
+            "LOCATION_TYPE",
+        ],
+    )
