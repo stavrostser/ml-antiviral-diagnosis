@@ -35,6 +35,26 @@ def _validate_model_table_columns(df: pd.DataFrame) -> None:
         raise ValueError(f"model_table is missing required columns: {missing_text}")
 
 
+def _validate_cleanup_columns(
+    df: pd.DataFrame,
+    columns: list[str],
+) -> None:
+    """Validate model-table columns used during cleanup.
+
+    Args:
+        df: Model table DataFrame.
+        columns: Columns that will be cleaned.
+
+    Raises:
+        ValueError: If any cleanup columns are missing.
+    """
+    missing_columns = set(columns) - set(df.columns)
+
+    if missing_columns:
+        missing_text = ", ".join(sorted(missing_columns))
+        raise ValueError(f"model_table is missing cleanup columns: {missing_text}")
+
+
 def _validate_diagnosis_feature_columns(df: pd.DataFrame) -> None:
     """Validate diagnosis dataset columns required for feature engineering.
 
@@ -198,3 +218,31 @@ def add_model_table_transaction_features(
     enriched_df["INSURANCE_TYPE"] = insurance_types
     enriched_df["CONTRAINDICATIONS"] = contraindication_values
     return enriched_df
+
+
+def clean_model_table_categorical_nulls(
+    model_table_df: pd.DataFrame,
+    columns: list[str] | None = None,
+    fill_value: str = "UNSPECIFIED",
+) -> pd.DataFrame:
+    """Fill missing categorical values in the model table.
+
+    Args:
+        model_table_df: Model table to clean.
+        columns: Categorical columns to fill. Defaults to physician columns.
+        fill_value: Replacement value for missing entries.
+
+    Returns:
+        A copy of the model table with missing values filled.
+
+    Raises:
+        ValueError: If any requested cleanup columns are missing.
+    """
+    cleanup_columns = ["PHYSICIAN_TYPE", "PHYSICIAN_STATE"] if columns is None else columns
+    _validate_cleanup_columns(model_table_df, cleanup_columns)
+
+    cleaned_df = model_table_df.copy()
+    for column in cleanup_columns:
+        cleaned_df[column] = cleaned_df[column].fillna(fill_value)
+
+    return cleaned_df

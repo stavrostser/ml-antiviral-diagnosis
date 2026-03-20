@@ -7,6 +7,7 @@ import pytest
 
 from ml_antiviral_diagnosis.feature_engineering import (
     add_model_table_transaction_features,
+    clean_model_table_categorical_nulls,
 )
 
 
@@ -122,4 +123,30 @@ def test_add_model_table_transaction_features_rejects_missing_columns() -> None:
                 }
             ),
             diagnosis_dataset_df=pd.DataFrame({"patient_id": [1]}),
+        )
+
+
+def test_clean_model_table_categorical_nulls_fills_physician_columns() -> None:
+    """It fills physician categorical nulls with UNSPECIFIED by default."""
+    model_table_df = pd.DataFrame(
+        {
+            "PATIENT_ID": [1, 2],
+            "PHYSICIAN_TYPE": [None, "UNSPECIFIED"],
+            "PHYSICIAN_STATE": [None, "TX"],
+            "INSURANCE_TYPE": ["COMMERCIAL", "MEDICARE"],
+        }
+    )
+
+    result = clean_model_table_categorical_nulls(model_table_df)
+
+    assert result["PHYSICIAN_TYPE"].tolist() == ["UNSPECIFIED", "UNSPECIFIED"]
+    assert result["PHYSICIAN_STATE"].tolist() == ["UNSPECIFIED", "TX"]
+    assert result["INSURANCE_TYPE"].tolist() == ["COMMERCIAL", "MEDICARE"]
+
+
+def test_clean_model_table_categorical_nulls_rejects_missing_columns() -> None:
+    """It validates that requested cleanup columns exist."""
+    with pytest.raises(ValueError, match="model_table is missing cleanup columns"):
+        clean_model_table_categorical_nulls(
+            pd.DataFrame({"PHYSICIAN_TYPE": [None]}),
         )
