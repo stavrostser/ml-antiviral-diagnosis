@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import ast
 from datetime import date
+from enum import StrEnum
+import re
 from typing import Any
 
 import pandas as pd
@@ -16,6 +18,289 @@ from ml_antiviral_diagnosis.de import (
     _normalize_transaction_text,
     _parse_transaction_date,
 )
+
+MODEL_TABLE_CATEGORICAL_COLUMNS = (
+    "PATIENT_GENDER",
+    "PHYSICIAN_TYPE",
+    "PHYSICIAN_STATE",
+    "LOCATION_TYPE",
+    "INSURANCE_TYPE",
+    "CONTRAINDICATIONS",
+)
+
+PATIENT_GENDER_VALUES = (
+    "F",
+    "M",
+)
+
+PHYSICIAN_TYPE_VALUES = (
+    "ADOLESCENT MEDICINE (PEDIATRICS)",
+    "ADVANCED REGISTERED NURSE",
+    "ALLERGY & IMMUNOLOGY",
+    "ANATOMIC PATHOLOGY",
+    "ANATOMIC/CLINICAL PATHOLOGY",
+    "ANESTHESIOLOGY",
+    "BEHAVIORAL HEALTH & SOCIAL SERVICES",
+    "BLOOD BANKING/TRANSFUSION MEDICINE",
+    "CARDIOVASCULAR DISEASE",
+    "CHILD & ADOLESCENT PSYCHIATRY",
+    "CLINICAL SOCIAL WORKER",
+    "CRITICAL CARE MEDICINE (INTERNAL MEDICINE)",
+    "CYTOPATHOLOGY",
+    "DERMATOPATHOLOGY",
+    "DIAGNOSTIC RADIOLOGY",
+    "EMERGENCY MEDICAL SERVICES",
+    "EMERGENCY MEDICINE",
+    "ENDOCRINOLOGY, DIABETES & METABOLISM",
+    "FAMILY MEDICINE",
+    "FORENSIC PATHOLOGY",
+    "GASTROENTEROLOGY",
+    "GENERAL PRACTICE",
+    "GENERAL PREVENTIVE MEDICINE",
+    "GENERAL SURGERY",
+    "GERIATRIC MEDICINE (FAMILY MEDICINE)",
+    "GERIATRIC MEDICINE (INTERNAL MEDICINE)",
+    "HEMATOLOGY (PATHOLOGY)",
+    "HEMATOLOGY/ONCOLOGY",
+    "HOSPICE & PALLIATIVE MEDICINE",
+    "HOSPITALIST",
+    "INFECTIOUS DISEASE",
+    "INTERNAL MEDICINE",
+    "INTERNAL MEDICINE/EMERGENCY MEDICINE",
+    "INTERNAL MEDICINE/FAMILY MEDICINE",
+    "INTERNAL MEDICINE/PEDIATRICS",
+    "MATERNAL & FETAL MEDICINE",
+    "MEDICAL GENETICS",
+    "NEPHROLOGY",
+    "NEUROLOGY",
+    "NEUROMUSCULAR MEDICINE (NEUROLOGY)",
+    "NEURORADIOLOGY",
+    "NOT APPLICABLE",
+    "NUCLEAR MEDICINE",
+    "NURSE PRACTITIONER",
+    "OBSTETRICS & GYNECOLOGY",
+    "ORTHOPEDIC SURGERY",
+    "OTOLARYNGOLOGY",
+    "PAIN MEDICINE",
+    "PAIN MEDICINE (PHYSICAL MEDICINE & REHABILITATION)",
+    "PEDIATRIC CARDIOLOGY",
+    "PEDIATRIC EMERGENCY MEDICINE",
+    "PEDIATRIC EMERGENCY MEDICINE (PEDIATRICS)",
+    "PEDIATRIC HEMATOLOGY/ONCOLOGY",
+    "PEDIATRIC RADIOLOGY",
+    "PEDIATRICS",
+    "PHARMACIST",
+    "PHYSICAL MEDICINE & REHABILITATION",
+    "PHYSICAL THERAPY",
+    "PHYSICIAN ASSISTANT",
+    "PODIATRIST",
+    "PSYCHIATRY",
+    "PUBLIC HEALTH & GENERAL PREVENTIVE MEDICINE",
+    "PULMONARY CRITICAL CARE MEDICINE",
+    "PULMONARY DISEASE",
+    "RADIATION ONCOLOGY",
+    "RADIOLOGY",
+    "RHEUMATOLOGY",
+    "SELECTIVE PATHOLOGY",
+    "SLEEP MEDICINE",
+    "SPORTS MEDICINE (EMERGENCY MEDICINE)",
+    "SPORTS MEDICINE (FAMILY MEDICINE)",
+    "SPORTS MEDICINE (PEDIATRICS)",
+    "STUDENT, HEALTH CARE",
+    "THORACIC SURGERY",
+    "UNSPECIFIED",
+    "UROLOGY",
+    "VASCULAR & INTERVENTIONAL RADIOLOGY",
+)
+
+PHYSICIAN_STATE_VALUES = (
+    "AK",
+    "AL",
+    "AR",
+    "AZ",
+    "CA",
+    "CO",
+    "CT",
+    "DC",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "IA",
+    "ID",
+    "IL",
+    "IN",
+    "KS",
+    "KY",
+    "LA",
+    "MA",
+    "MD",
+    "ME",
+    "MI",
+    "MN",
+    "MO",
+    "MS",
+    "MT",
+    "NC",
+    "ND",
+    "NE",
+    "NH",
+    "NJ",
+    "NM",
+    "NV",
+    "NY",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "PR",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UNSPECIFIED",
+    "UT",
+    "VA",
+    "VT",
+    "WA",
+    "WI",
+    "WV",
+    "WY",
+)
+
+LOCATION_TYPE_VALUES = (
+    "AMBULANCE - AIR OR WATER",
+    "AMBULANCE - LAND",
+    "CLINIC  - FEDERALLY QUALIFIED HEALTH CENTER (FQHC)",
+    "CLINIC - FREESTANDING",
+    "CLINIC - RURAL HEALTH",
+    "COMPREHENSIVE OUTPATIENT REHABILITATION FACILITY",
+    "CRITICAL ACCESS HOSPITAL",
+    "EMERGENCY ROOM - HOSPITAL",
+    "FEDERALLY QUALIFIED HEALTH CENTER",
+    "HOSPITAL - LABORATORY SERVICES PROVIDED TO NON-PATIENTS",
+    "HOSPITAL INPATIENT (INCLUDING MEDICARE PART A)",
+    "HOSPITAL INPATIENT (MEDICARE PART B ONLY)",
+    "HOSPITAL OUTPATIENT",
+    "INDEPENDENT LABORATORY",
+    "INPATIENT HOSPITAL",
+    "INPATIENT PSYCHIATRIC FACILITY",
+    "MOBILE UNIT",
+    "OFF CAMPUS-OUTPATIENT HOSPITAL",
+    "OFFICE",
+    "ON CAMPUS-OUTPATIENT HOSPITAL",
+    "OTHER PLACE OF SERVICE",
+    "PHARMACY",
+    "RURAL HEALTH CLINIC",
+    "TELEHEALTH PROVIDED IN PATIENT'S HOME",
+    "TELEHEALTH PROVIDED OTHER THAN IN PATIENT'S HOME",
+    "UNASSIGNED",
+    "URGENT CARE FACILITY",
+    "WALK-IN RETAIL HEALTH CLINIC",
+)
+
+INSURANCE_TYPE_VALUES = (
+    "COMMERCIAL",
+    "MEDICAID",
+    "MEDICARE",
+    "UNSPECIFIED",
+)
+
+CONTRAINDICATIONS_VALUES = (
+    "High",
+    "Low",
+    "Medium",
+    "Unspecified",
+)
+
+HIGH_RISK_AGE_THRESHOLD = 65
+HIGH_RISK_CONDITION_MIN_AGE = 12
+HIGH_RISK_CONDITION_VALUES = frozenset(
+    {
+        "ASTHMA",
+        "CANCER",
+        "CANCER TREATMENT",
+        "CARDIOVASCULAR DISEASE",
+        "CHRONIC LUNG DISEASE",
+        "COPD",
+        "CORONARY ARTERY DISEASE",
+        "DIABETES",
+        "HEART DISEASE",
+        "HEART FAILURE",
+        "HIV",
+        "HIV AIDS",
+        "IMMUNOCOMPROMISED",
+        "OBESITY",
+        "ORGAN TRANSPLANT",
+        "SMOKING",
+        "STROKE",
+        "WEAKENED IMMUNE SYSTEM",
+    }
+)
+
+
+def _build_enum_member_name(value: str, used_names: set[str]) -> str:
+    """Create a valid and unique enum member name for a categorical value.
+
+    Args:
+        value: Raw categorical value.
+        used_names: Previously assigned enum member names.
+
+    Returns:
+        A valid ``StrEnum`` member name.
+    """
+    candidate = re.sub(r"[^A-Z0-9]+", "_", value.strip().upper()).strip("_")
+    if not candidate:
+        candidate = "EMPTY"
+    if candidate[0].isdigit():
+        candidate = f"VALUE_{candidate}"
+
+    unique_candidate = candidate
+    suffix = 2
+    while unique_candidate in used_names:
+        unique_candidate = f"{candidate}_{suffix}"
+        suffix += 1
+
+    used_names.add(unique_candidate)
+    return unique_candidate
+
+
+def _build_str_enum(enum_name: str, values: tuple[str, ...]) -> type[StrEnum]:
+    """Build a ``StrEnum`` from a sequence of categorical values.
+
+    Args:
+        enum_name: Name of the enum class.
+        values: Ordered categorical values.
+
+    Returns:
+        A ``StrEnum`` subtype with the provided values.
+    """
+    used_names: set[str] = set()
+    members = {
+        _build_enum_member_name(value, used_names): value
+        for value in values
+    }
+    return StrEnum(enum_name, members)
+
+
+PatientGender = _build_str_enum("PatientGender", PATIENT_GENDER_VALUES)
+PhysicianType = _build_str_enum("PhysicianType", PHYSICIAN_TYPE_VALUES)
+PhysicianState = _build_str_enum("PhysicianState", PHYSICIAN_STATE_VALUES)
+LocationType = _build_str_enum("LocationType", LOCATION_TYPE_VALUES)
+InsuranceType = _build_str_enum("InsuranceType", INSURANCE_TYPE_VALUES)
+ContraindicationsLevel = _build_str_enum(
+    "ContraindicationsLevel", CONTRAINDICATIONS_VALUES
+)
+
+MODEL_TABLE_CATEGORICAL_ENUMS: dict[str, type[StrEnum]] = {
+    "PATIENT_GENDER": PatientGender,
+    "PHYSICIAN_TYPE": PhysicianType,
+    "PHYSICIAN_STATE": PhysicianState,
+    "LOCATION_TYPE": LocationType,
+    "INSURANCE_TYPE": InsuranceType,
+    "CONTRAINDICATIONS": ContraindicationsLevel,
+}
 
 
 def _validate_model_table_columns(df: pd.DataFrame) -> None:
@@ -144,6 +429,50 @@ def _normalize_contraindication_value(value: Any) -> str:
     return "Unspecified"
 
 
+def _has_high_risk_underlying_condition(
+    condition_transactions: list[dict[str, Any]],
+) -> bool:
+    """Check whether any qualifying high-risk condition is present.
+
+    Args:
+        condition_transactions: Condition transactions on or before diagnosis.
+
+    Returns:
+        ``True`` when a qualifying underlying condition is present.
+    """
+    normalized_conditions = {
+        _normalize_transaction_text(transaction.get("txn_desc", ""))
+        for transaction in condition_transactions
+    }
+    return any(condition in HIGH_RISK_CONDITION_VALUES for condition in normalized_conditions)
+
+
+def _is_high_risk_patient(
+    patient_age: Any,
+    condition_transactions: list[dict[str, Any]],
+) -> int:
+    """Compute the high-risk flag from age and underlying conditions.
+
+    Args:
+        patient_age: Patient age at first diagnosis.
+        condition_transactions: Condition transactions on or before diagnosis.
+
+    Returns:
+        ``1`` when the patient meets the high-risk rule, otherwise ``0``.
+    """
+    if pd.isna(patient_age):
+        return 0
+
+    normalized_age = int(patient_age)
+    if normalized_age >= HIGH_RISK_AGE_THRESHOLD:
+        return 1
+
+    if normalized_age <= HIGH_RISK_CONDITION_MIN_AGE:
+        return 0
+
+    return int(_has_high_risk_underlying_condition(condition_transactions))
+
+
 def add_model_table_transaction_features(
     model_table_df: pd.DataFrame,
     diagnosis_dataset_df: pd.DataFrame,
@@ -159,6 +488,8 @@ def add_model_table_transaction_features(
     - ``CONTRAINDICATIONS`` from the closest contraindication transaction on or
       before the model table's diagnosis date, normalized to ``Low``,
       ``Medium``, ``High``, or ``Unspecified``.
+        - ``HIGH_RISK`` using the diagnosis-age rule and qualifying underlying
+            condition transactions on or before diagnosis.
 
     Args:
         model_table_df: Existing model table.
@@ -175,6 +506,9 @@ def add_model_table_transaction_features(
     _validate_model_table_columns(model_table_df)
     _validate_diagnosis_feature_columns(diagnosis_dataset_df)
 
+    if "PATIENT_AGE" not in model_table_df.columns:
+        raise ValueError("model_table is missing required columns: PATIENT_AGE")
+
     diagnosis_lookup = {
         int(row.patient_id): _parse_transactions_by_type(row.transactions_by_type)
         for row in diagnosis_dataset_df.itertuples(index=False)
@@ -183,6 +517,7 @@ def add_model_table_transaction_features(
     enriched_df = model_table_df.copy()
     insurance_types: list[str | None] = []
     contraindication_values: list[str] = []
+    high_risk_values: list[int] = []
 
     for row in enriched_df.itertuples(index=False):
         patient_id = int(row.PATIENT_ID)
@@ -191,11 +526,13 @@ def add_model_table_transaction_features(
 
         diagnosis_event = None
         latest_contraindication = None
+        condition_transactions: list[dict[str, Any]] = []
         if transactions_by_type is not None:
+            condition_transactions = _get_transactions_for_type(
+                transactions_by_type, TransactionType.CONDITIONS
+            )
             diagnosis_event = _find_first_transaction_by_description_on_date(
-                transactions=_get_transactions_for_type(
-                    transactions_by_type, TransactionType.CONDITIONS
-                ),
+                transactions=condition_transactions,
                 description=diagnosis_description,
                 event_date=diagnosis_date,
             )
@@ -214,9 +551,16 @@ def add_model_table_transaction_features(
             if latest_contraindication is None
             else _normalize_contraindication_value(latest_contraindication.get("txn_desc", ""))
         )
+        high_risk_values.append(
+            _is_high_risk_patient(
+                patient_age=row.PATIENT_AGE,
+                condition_transactions=condition_transactions,
+            )
+        )
 
     enriched_df["INSURANCE_TYPE"] = insurance_types
     enriched_df["CONTRAINDICATIONS"] = contraindication_values
+    enriched_df["HIGH_RISK"] = high_risk_values
     return enriched_df
 
 
