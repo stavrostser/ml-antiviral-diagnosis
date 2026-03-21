@@ -2,6 +2,16 @@
 ## by Stavros Tseranidis
 ### A case study for an alert system for antiviral treatment
 
+## Repository Structure
+
+- `dataset/`: Input datasets, intermediate CSV outputs, and the original case-study sheets.
+- `docker/`: Dockerfiles used to build the API and UI containers.
+- `images/`: Saved images for model performance plots and UI screenshots.
+- `ml_antiviral_diagnosis/`: Core Python package containing data engineering, feature engineering, and API code.
+- `models/`: Persisted trained model artifacts used for inference.
+- `notebooks/`: Exploratory and modeling notebooks for data preparation, feature engineering, and training.
+- `tests/`: Unit tests for the core module logic and API behavior.
+- `ui/`: React + Vite frontend for test and explore the API. Enter patient data and display inference results.
 
 ## Software Architecture And Design Choices
 
@@ -15,8 +25,6 @@
 
 - Final feature-engineered model table CSV: `dataset/model_table_feature_engineered.csv`
 - Original model table layout provided with the exercise: `dataset/original_sheets/model_table.csv`
-
-
 
 ## Local development
 
