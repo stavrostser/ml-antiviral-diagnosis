@@ -239,6 +239,8 @@ HIGH_RISK_CONDITION_VALUES = frozenset(
     }
 )
 
+HIGH_RISK_CONDITION_OPTIONS = tuple(sorted(HIGH_RISK_CONDITION_VALUES))
+
 
 def _build_enum_member_name(value: str, used_names: set[str]) -> str:
     """Create a valid and unique enum member name for a categorical value.
@@ -471,6 +473,40 @@ def _is_high_risk_patient(
         return 0
 
     return int(_has_high_risk_underlying_condition(condition_transactions))
+
+
+def get_high_risk_condition_options() -> tuple[str, ...]:
+    """Return the supported high-risk underlying conditions.
+
+    Returns:
+        Sorted condition names used by the high-risk eligibility rule.
+    """
+
+    return HIGH_RISK_CONDITION_OPTIONS
+
+
+def determine_high_risk_flag(
+    patient_age: Any,
+    condition_descriptions: list[str] | tuple[str, ...] | None,
+) -> int:
+    """Compute the high-risk flag from age and condition descriptions.
+
+    Args:
+        patient_age: Patient age at diagnosis time.
+        condition_descriptions: Raw condition descriptions to evaluate.
+
+    Returns:
+        ``1`` when the patient meets the high-risk rule, otherwise ``0``.
+    """
+
+    condition_transactions = [
+        {"txn_desc": description}
+        for description in (condition_descriptions or [])
+    ]
+    return _is_high_risk_patient(
+        patient_age=patient_age,
+        condition_transactions=condition_transactions,
+    )
 
 
 def add_model_table_transaction_features(

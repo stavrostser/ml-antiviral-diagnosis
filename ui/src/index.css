@@ -1,0 +1,103 @@
+:root {
+  --text: #5d6472;
+  --text-h: #0a1424;
+  --bg: #f4efe7;
+  --border: rgba(13, 28, 49, 0.1);
+  --code-bg: #ebf1fa;
+  --shadow: 0 24px 60px rgba(15, 28, 53, 0.12);
+
+  --sans: 'Manrope', 'Aptos', 'Segoe UI', sans-serif;
+  --heading: 'Space Grotesk', 'Aptos Display', 'Segoe UI', sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  @media (max-width: 1024px) {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #a9b2c5;
+    --text-h: #f5f8ff;
+    --bg: #0d1420;
+    --border: rgba(182, 205, 255, 0.12);
+    --code-bg: #162033;
+    --shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  }
+}
+
+#root {
+  width: 1220px;
+  max-width: 100%;
+  margin: 0 auto;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 175, 119, 0.2), transparent 28%),
+    radial-gradient(circle at top right, rgba(88, 155, 255, 0.2), transparent 24%),
+    linear-gradient(180deg, rgba(253, 251, 246, 0.94), rgba(240, 245, 252, 0.98));
+}
+
+h1,
+h2 {
+  font-family: var(--heading);
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+h1 {
+  font-size: clamp(2.8rem, 6vw, 4.6rem);
+  line-height: 0.96;
+  letter-spacing: -0.06em;
+  margin: 18px 0 20px;
+  @media (max-width: 1024px) {
+    font-size: 36px;
+    margin: 20px 0;
+  }
+}
+
+h2 {
+  font-size: 1.45rem;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  margin: 0 0 10px;
+  @media (max-width: 1024px) {
+    font-size: 20px;
+  }
+}
+
+p {
+  margin: 0;
+}
+
+strong {
+  color: var(--text-h);
+}
+
+code {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--text-h);
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
+}

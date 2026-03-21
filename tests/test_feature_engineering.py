@@ -22,6 +22,8 @@ from ml_antiviral_diagnosis.feature_engineering import (
     PhysicianType,
     add_model_table_transaction_features,
     clean_model_table_categorical_nulls,
+    determine_high_risk_flag,
+    get_high_risk_condition_options,
 )
 
 
@@ -325,3 +327,22 @@ def test_model_table_categorical_enum_mapping_points_to_expected_enums() -> None
     }
     assert InsuranceType.UNSPECIFIED.value == "UNSPECIFIED"
     assert ContraindicationsLevel.UNSPECIFIED.value == "Unspecified"
+
+
+def test_determine_high_risk_flag_uses_age_and_qualifying_conditions() -> None:
+    """It computes high-risk eligibility from age and condition descriptions."""
+
+    assert determine_high_risk_flag(70, []) == 1
+    assert determine_high_risk_flag(40, ["diabetes"]) == 1
+    assert determine_high_risk_flag(40, ["mental_health_disorders"]) == 0
+    assert determine_high_risk_flag(12, ["obesity"]) == 0
+
+
+def test_get_high_risk_condition_options_returns_sorted_condition_values() -> None:
+    """It exposes sorted high-risk conditions for client-side selectors."""
+
+    options = get_high_risk_condition_options()
+
+    assert options == tuple(sorted(options))
+    assert "DIABETES" in options
+    assert "OBESITY" in options
