@@ -55,6 +55,15 @@ cd /path/to/ml-antiviral-diagnosis
 docker compose up --build
 ```
 
+To stop the running containers, press `Ctrl+C` in the terminal where Compose is running.
+
+If you want to stop and remove the containers before starting again:
+
+```bash
+docker compose down
+docker compose up --build
+```
+
 After startup:
 
 - UI: `http://localhost:3000`
