@@ -1,6 +1,20 @@
 # ml-antiviral-diagnosis
-### by Stavros Tseranidis
+## by Stavros Tseranidis
 ### A case study for an alert system for antiviral treatment
+
+
+## Software Architecture And Design Choices
+
+- `ml_antiviral_diagnosis/feature_engineering.py` contains reusable feature-engineering and high-risk eligibility logic so the same rules can be shared across notebooks, tests, and the API.
+- `ml_antiviral_diagnosis/api.py` exposes a small FastAPI inference service with Pydantic request/response models, categorical-option discovery, validation, and model loading separated from the HTTP layer.
+- `ui/` contains a lightweight React + Vite frontend that calls the API, renders the required inputs, and displays eligibility plus inference results in a simple single-page workflow.
+- `tests/` covers the core transformation and inference behavior so the feature pipeline and API contract can be changed with less risk.
+- The application is containerized with Docker Compose so the API and UI can be started together locally with a consistent runtime.
+
+## Model Table Output
+
+- Final feature-engineered model table CSV: `dataset/model_table_feature_engineered.csv`
+- Original model table layout provided with the exercise: `dataset/original_sheets/model_table.csv`
 
 
 
@@ -69,6 +83,10 @@ After startup:
 - UI: `http://localhost:3000`
 - API health check: `http://localhost:8000/health`
 - API docs: `http://localhost:8000/docs`
+
+### UI Screenshot
+
+![Inference UI](images/ui-screenshot.png)
 
 ## Query The API
 
