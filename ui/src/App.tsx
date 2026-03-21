@@ -180,23 +180,21 @@ function App() {
   }
 
   const probability = result?.predicted_probability ?? 0
-  const confidenceClass =
+  const resultClass =
     result === null
       ? 'idle'
       : !result.high_risk
         ? 'ineligible'
-        : probability >= 0.7
-          ? 'high'
-          : probability >= 0.45
-            ? 'medium'
-            : 'low'
+        : probability >= (result.threshold ?? 0.5)
+          ? 'above-threshold'
+          : 'below-threshold'
 
   return (
     <main className="shell">
       <section className="hero-panel">
         <div className="hero-copy">
           <span className="eyebrow">Disease X treatment inference</span>
-          <h1>Estimate antiviral treatment likelihood for a high-risk patient.</h1>
+          <h1>Alert System</h1>
           <p className="lede">
             This interface first checks whether the patient qualifies as high risk.
             If they do, it runs the trained model and returns the estimated probability
@@ -204,7 +202,7 @@ function App() {
           </p>
         </div>
 
-        <div className={`result-card ${confidenceClass}`}>
+        <div className={`result-card ${resultClass}`}>
           <div className="result-label">
             {result !== null && !result.high_risk ? 'Eligibility result' : 'Predicted likelihood'}
           </div>
@@ -220,9 +218,9 @@ function App() {
               ? 'Submit the form to validate risk and score a patient record.'
               : !result.high_risk
                 ? result.message
-                : result.prediction === 1
-                ? 'Model prediction: likely treated'
-                : 'Model prediction: less likely treated'}
+                : result.predicted_probability !== null && result.threshold !== null && result.predicted_probability >= result.threshold
+                  ? 'Above threshold: model prediction is likely treated'
+                  : 'Below threshold: model prediction is less likely treated'}
           </div>
           <dl className="result-meta">
             <div>
@@ -258,6 +256,15 @@ function App() {
         </div>
 
         <form className="prediction-form" onSubmit={handleSubmit}>
+          <div className="form-footer form-footer-top">
+            <button type="submit" disabled={isSubmitting || isLoadingOptions || options === null}>
+              {isSubmitting ? 'Scoring patient...' : 'Estimate likelihood'}
+            </button>
+            <div className="form-note">
+              This sends a JSON POST request to <span>{API_BASE_URL}/predict</span>.
+            </div>
+          </div>
+
           <label className="field field-number">
             <span>Patient age</span>
             <input
@@ -328,14 +335,6 @@ function App() {
             </div>
           </fieldset>
 
-          <div className="form-footer">
-            <div className="form-note">
-              This sends a JSON POST request to <span>{API_BASE_URL}/predict</span>.
-            </div>
-            <button type="submit" disabled={isSubmitting || isLoadingOptions || options === null}>
-              {isSubmitting ? 'Scoring patient...' : 'Estimate likelihood'}
-            </button>
-          </div>
         </form>
 
         {errorMessage ? <div className="error-banner">{errorMessage}</div> : null}
