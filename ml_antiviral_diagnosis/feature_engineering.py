@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import ast
+import re
 from datetime import date
 from enum import StrEnum
-import re
 from typing import Any
 
 import pandas as pd
@@ -279,10 +279,7 @@ def _build_str_enum(enum_name: str, values: tuple[str, ...]) -> type[StrEnum]:
         A ``StrEnum`` subtype with the provided values.
     """
     used_names: set[str] = set()
-    members = {
-        _build_enum_member_name(value, used_names): value
-        for value in values
-    }
+    members = {_build_enum_member_name(value, used_names): value for value in values}
     return StrEnum(enum_name, members)
 
 
@@ -291,9 +288,7 @@ PhysicianType = _build_str_enum("PhysicianType", PHYSICIAN_TYPE_VALUES)
 PhysicianState = _build_str_enum("PhysicianState", PHYSICIAN_STATE_VALUES)
 LocationType = _build_str_enum("LocationType", LOCATION_TYPE_VALUES)
 InsuranceType = _build_str_enum("InsuranceType", INSURANCE_TYPE_VALUES)
-ContraindicationsLevel = _build_str_enum(
-    "ContraindicationsLevel", CONTRAINDICATIONS_VALUES
-)
+ContraindicationsLevel = _build_str_enum("ContraindicationsLevel", CONTRAINDICATIONS_VALUES)
 
 MODEL_TABLE_CATEGORICAL_ENUMS: dict[str, type[StrEnum]] = {
     "PATIENT_GENDER": PatientGender,
@@ -500,8 +495,7 @@ def determine_high_risk_flag(
     """
 
     condition_transactions = [
-        {"txn_desc": description}
-        for description in (condition_descriptions or [])
+        {"txn_desc": description} for description in (condition_descriptions or [])
     ]
     return _is_high_risk_patient(
         patient_age=patient_age,

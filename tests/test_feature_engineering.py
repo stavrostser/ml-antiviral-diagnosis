@@ -310,9 +310,7 @@ def test_model_table_categorical_enums_match_declared_values() -> None:
     assert [member.value for member in PhysicianState] == list(PHYSICIAN_STATE_VALUES)
     assert [member.value for member in LocationType] == list(LOCATION_TYPE_VALUES)
     assert [member.value for member in InsuranceType] == list(INSURANCE_TYPE_VALUES)
-    assert [member.value for member in ContraindicationsLevel] == list(
-        CONTRAINDICATIONS_VALUES
-    )
+    assert [member.value for member in ContraindicationsLevel] == list(CONTRAINDICATIONS_VALUES)
 
 
 def test_model_table_categorical_enum_mapping_points_to_expected_enums() -> None:

@@ -13,10 +13,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
 from ml_antiviral_diagnosis.feature_engineering import (
-    ContraindicationsLevel,
-    InsuranceType,
     MODEL_TABLE_CATEGORICAL_COLUMNS,
     MODEL_TABLE_CATEGORICAL_ENUMS,
+    ContraindicationsLevel,
+    InsuranceType,
     LocationType,
     PatientGender,
     PhysicianState,
@@ -187,13 +187,7 @@ def _prepare_inference_frame(request: InferenceRequest) -> pd.DataFrame:
     _validate_categorical_values(raw_row)
 
     raw_df = pd.DataFrame(
-        [
-            {
-                key: value
-                for key, value in raw_row.items()
-                if key != "UNDERLYING_CONDITIONS"
-            }
-        ]
+        [{key: value for key, value in raw_row.items() if key != "UNDERLYING_CONDITIONS"}]
     )
     for column in MODEL_TABLE_CATEGORICAL_COLUMNS:
         enum_type = MODEL_TABLE_CATEGORICAL_ENUMS[column]

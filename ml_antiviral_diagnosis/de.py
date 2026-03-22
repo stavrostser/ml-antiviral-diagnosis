@@ -506,7 +506,9 @@ def build_model_table(
         diagnosis_date = row.first_diagnosis_date
         transactions_by_type = dict(row.transactions_by_type)
         diagnosis_event = _find_first_transaction_by_description_on_date(
-            transactions=_get_transactions_for_type(transactions_by_type, TransactionType.CONDITIONS),
+            transactions=_get_transactions_for_type(
+                transactions_by_type, TransactionType.CONDITIONS
+            ),
             description=diagnosis_description,
             event_date=diagnosis_date,
         )
@@ -519,12 +521,16 @@ def build_model_table(
 
         physician_state = None
         physician_type = None
-        diagnosis_physician_id = None if diagnosis_event is None else diagnosis_event.get("physician_id")
+        diagnosis_physician_id = (
+            None if diagnosis_event is None else diagnosis_event.get("physician_id")
+        )
         if diagnosis_physician_id is not None and diagnosis_physician_id in physician_lookup.index:
             physician_state = physician_lookup.at[diagnosis_physician_id, "STATE"]
             physician_type = physician_lookup.at[diagnosis_physician_id, "PHYSICIAN_TYPE"]
 
-        location_type = None if diagnosis_event is None else diagnosis_event.get("txn_location_type")
+        location_type = (
+            None if diagnosis_event is None else diagnosis_event.get("txn_location_type")
+        )
         num_conditions = _count_high_risk_conditions(
             condition_transactions=_get_transactions_for_type(
                 transactions_by_type, TransactionType.CONDITIONS
@@ -537,7 +543,9 @@ def build_model_table(
                 "PATIENT_ID": patient_id,
                 "TARGET": int(row.TARGET),
                 "DISEASEX_DT": diagnosis_date,
-                "PATIENT_AGE": _calculate_patient_age_at_diagnosis(diagnosis_date, patient_birth_year),
+                "PATIENT_AGE": _calculate_patient_age_at_diagnosis(
+                    diagnosis_date, patient_birth_year
+                ),
                 "PATIENT_GENDER": patient_gender,
                 "NUM_CONDITIONS": num_conditions,
                 "PHYSICIAN_TYPE": physician_type,

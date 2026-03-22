@@ -8,8 +8,8 @@ import pandas as pd
 import pytest
 
 from ml_antiviral_diagnosis.de import (
-    build_patient_diagnosis_dataset,
     build_model_table,
+    build_patient_diagnosis_dataset,
     transform_fact_txn_to_patient_transactions,
 )
 
@@ -451,7 +451,9 @@ def test_build_model_table_rejects_missing_dim_columns() -> None:
         {
             "patient_id": [1],
             "first_diagnosis_date": [date(2024, 1, 1)],
-            "transactions_by_type": [{"SYMPTOMS": [], "CONDITIONS": [], "CONTRAINDICATIONS": [], "TREATMENTS": []}],
+            "transactions_by_type": [
+                {"SYMPTOMS": [], "CONDITIONS": [], "CONTRAINDICATIONS": [], "TREATMENTS": []}
+            ],
             "TARGET": [0],
         }
     )
