@@ -1,0 +1,8 @@
+- case study description and instructions in dataset/original_sheets/Instructions.csv
+- project is in python
+- uses uv
+- uses pytest
+- in functions, always write type hints and proper docstrings in google style
+- where applicable, write unit tests for functions in the `tests/` directory
+- see README.md for linting
+- current environment is windows with git bash, always activate the .venv before any command you run
